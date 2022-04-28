@@ -1,0 +1,25 @@
+name: Update Docker
+on:
+  workflow_dispatch:
+  schedule:
+    - cron:  '0 0 1 * *'
+jobs:
+  build_test_and_push_images:
+    name: Build Rust cross-compile Docker image test and deploy to DockerHub
+    runs-on: ubuntu-latest
+    env: 
+      DOCKER_USER: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASS: ${{ secrets.DOCKER_PASSWORD }}
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+      - name: Login to DockerHub
+        run: docker login -u $DOCKER_USER -p $DOCKER_PASS
+      - name: Build docker image
+        run: docker build -q -t skrcka/rust-arm-crosscompile .
+      - name: Get rust
+        run: echo "RUST_VERSION=$(rust --version 2>&1 | head -1 | cut -d'"' -f2 | sed '/^1\./s///' | cut -d'.' -f1 | sed '/Google Chrome /s///')" >> $GITHUB_ENV
+      - name: Tag with rust version
+        run: docker tag skrcka/rust-arm-crosscompile skrcka/rust-arm-crosscompile:rust-${{ env.RUST_VERSION }}
+      - name: Push to DockerHub
+        run: docker push skrcka/rust-arm-crosscompile --all-tags
